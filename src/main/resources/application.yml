@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: product-information-aggregator
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics
+
+aggregator:
+  timeout-buffer-ms: 40
+  markets:
+    pl-PL:
+      language: pl
+      currency: PLN
+    de-DE:
+      language: de
+      currency: EUR
+    nl-NL:
+      language: nl
+      currency: EUR
+  services:
+    catalog:
+      latency-ms: 50
+      reliability: 0.999
+      timeout-ms: 150
+    pricing:
+      latency-ms: 80
+      reliability: 0.995
+      timeout-ms: 180
+    availability:
+      latency-ms: 100
+      reliability: 0.98
+      timeout-ms: 220
+    customer:
+      latency-ms: 60
+      reliability: 0.99
+      timeout-ms: 160

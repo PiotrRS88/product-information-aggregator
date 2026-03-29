@@ -1,0 +1,29 @@
+aggregator:
+  timeout-buffer-ms: 10
+  markets:
+    pl-PL:
+      language: pl
+      currency: PLN
+    de-DE:
+      language: de
+      currency: EUR
+    nl-NL:
+      language: nl
+      currency: EUR
+  services:
+    catalog:
+      latency-ms: 1
+      reliability: 1.0
+      timeout-ms: 50
+    pricing:
+      latency-ms: 1
+      reliability: 1.0
+      timeout-ms: 50
+    availability:
+      latency-ms: 1
+      reliability: 1.0
+      timeout-ms: 50
+    customer:
+      latency-ms: 1
+      reliability: 1.0
+      timeout-ms: 50
