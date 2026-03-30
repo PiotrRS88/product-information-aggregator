@@ -3,6 +3,7 @@ package com.example.productaggregator.api;
 import com.example.productaggregator.domain.AggregatedProductResponse;
 import com.example.productaggregator.service.ProductAggregationService;
 import jakarta.validation.constraints.Pattern;
+import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -10,16 +11,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+@RequiredArgsConstructor
 @Validated
 @RestController
 @RequestMapping("/v1/products")
 public class ProductController {
 
     private final ProductAggregationService productAggregationService;
-
-    public ProductController(ProductAggregationService productAggregationService) {
-        this.productAggregationService = productAggregationService;
-    }
 
     @GetMapping("/{productId}")
     public AggregatedProductResponse getProduct(
@@ -30,3 +28,5 @@ public class ProductController {
         return productAggregationService.getProduct(productId, market, customerId);
     }
 }
+
+

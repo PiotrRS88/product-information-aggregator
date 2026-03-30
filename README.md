@@ -46,7 +46,7 @@ mvn test
 
 ## Design Decisions
 
-The solution is intentionally split into a few focused components. `ProductAggregationService` coordinates the use case, `MarketResolver` resolves market-specific context, `ProductEnrichmentFetcher` handles parallel upstream calls and fallback behavior, and `ProductResponseAssembler` builds the final API response. This keeps orchestration readable and makes the required-vs-optional distinction explicit in code.
+The solution is intentionally split into a few focused components. `ProductAggregationService` coordinates the use case, `MarketResolver` resolves market-specific context, `ProductEnrichmentFetcher` handles parallel upstream calls, timeout and fallback policies, and the required-vs-optional dependency distinction, while `ProductResponseAssembler` builds the final API response. This keeps orchestration readable and prevents transport logic, fallback rules, and response assembly from being mixed in one class.
 
 Simulated upstream services are implemented behind interfaces. Each simulated service adds latency jitter and occasional failures based on the assignment’s reliability numbers. This makes the service behavior closer to a distributed system while keeping the project lightweight and easy to run locally.
 
@@ -56,9 +56,10 @@ Domain DTOs and value objects are modeled as Java records. Lombok is used select
 
 ## Trade-offs
 
-I used in-process simulated upstream clients instead of separate mock HTTP services. For a 3-4 hour assignment this keeps the focus on orchestration, resilience rules and code quality. In a fuller version I would expose those simulators as separate services or use tools such as WireMock or Testcontainers to model network boundaries more realistically.
+I used in-process simulated upstream clients instead of separate mock HTTP services. This keeps the focus on orchestration, resilience rules and code quality. In a fuller version I would expose those simulators as separate services or use tools such as WireMock or Testcontainers to model network boundaries more realistically.
 
 I used `CompletableFuture` rather than a full reactive stack. The assignment needs parallel I/O, timeouts and graceful degradation, but does not require the complexity of end-to-end reactive programming.
+
 
 ## Production Readiness
 
@@ -68,16 +69,10 @@ I used `CompletableFuture` rather than a full reactive stack. The assignment nee
 - Market and service profiles externalized in configuration
 - Health and metrics endpoints can be exposed through Spring Boot Actuator
 
-With more time I would add:
+## Design Question: Option C
 
-- Resilience4j circuit breakers and bulkheads
-- Request correlation IDs and richer per-upstream metrics
-- Separate HTTP adapters for upstream integrations
-- OpenAPI documentation
-- More tests around timeout paths and degraded responses
+If the platform expands to 5 new markets, the main changes in the current design would be configuration and market-specific data rather than core architecture. Market handling is already centralized through `MarketResolver` and externalized configuration, so adding new markets would mostly mean defining new market codes, languages and currencies.
 
-## Design Question: Option A
+Some simulated upstream logic would also need updates where mock responses currently depend on market-specific values, such as warehouse location or localized sample data. The aggregation flow itself would not need to change, because it is already independent of the number of supported markets.
 
-If the Assortment team adds a `Related Products` service with `200ms` latency and `90%` reliability, I would add it as another optional enricher behind its own client interface. Its reliability is too low, and its latency is too high, to make it required for a product detail page. The response should still be useful without it.
-
-In this design that change is small: add a new client interface, a simulated implementation, a response section, and one more asynchronous call in the enrichment layer. The existing structure already separates required and optional dependencies, so no major refactor is needed.
+With more time, I would move market definitions into a dedicated configuration source or reference dataset to make adding new markets safer and easier to operate.

@@ -19,7 +19,7 @@ abstract class AbstractSimulatedUpstreamClient {
 
     protected void simulateUpstreamBehavior() {
         sleepWithJitter();
-        maybeFail();
+        randomFail();
     }
 
     protected int timeoutMs() {
@@ -36,7 +36,7 @@ abstract class AbstractSimulatedUpstreamClient {
         }
     }
 
-    private void maybeFail() {
+    private void randomFail() {
         double roll = ThreadLocalRandom.current().nextDouble();
         if (roll > profile.getReliability()) {
             throw new UpstreamServiceException(serviceName, "Upstream service failed");

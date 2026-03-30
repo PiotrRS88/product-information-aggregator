@@ -47,7 +47,7 @@ public class ProductEnrichmentFetcher {
         CompletableFuture<CatalogData> catalogFuture = fetchRequiredCatalog(productId, marketContext);
         CompletableFuture<OptionalEnrichment<PricingData>> pricingFuture = fetchPricing(productId, marketContext, customerId);
         CompletableFuture<OptionalEnrichment<AvailabilityData>> availabilityFuture = fetchAvailability(productId, marketContext);
-        CompletableFuture<OptionalEnrichment<CustomerContextData>> customerFuture = fetchCustomerContext(customerId, marketContext);
+        CompletableFuture<OptionalEnrichment<CustomerContextData>> customerFuture = fetchCustomerContext(productId, customerId, marketContext);
 
         CatalogData catalog = joinRequiredCatalog(catalogFuture, productId, marketContext.marketCode());
         OptionalEnrichment<PricingData> pricing = pricingFuture.join();
@@ -79,7 +79,9 @@ public class ProductEnrichmentFetcher {
                 () -> upstreamClients.pricing().getPricing(productId, marketContext, customerId),
                 PricingData.unavailable(marketContext.currency()),
                 "pricing",
-                "Pricing is unavailable"
+                "Pricing is unavailable",
+                productId,
+                marketContext.marketCode()
         );
     }
 
@@ -91,11 +93,14 @@ public class ProductEnrichmentFetcher {
                 () -> upstreamClients.availability().getAvailability(productId, marketContext),
                 AvailabilityData.unknown(),
                 "availability",
-                "Availability is unknown"
+                "Availability is unknown",
+                productId,
+                marketContext.marketCode()
         );
     }
 
     private CompletableFuture<OptionalEnrichment<CustomerContextData>> fetchCustomerContext(
+            String productId,
             String customerId,
             MarketContext marketContext
     ) {
@@ -109,7 +114,9 @@ public class ProductEnrichmentFetcher {
                 () -> upstreamClients.customer().getCustomerContext(customerId, marketContext),
                 CustomerContextData.standard(),
                 "customer",
-                "Personalized customer context is unavailable"
+                "Personalized customer context is unavailable",
+                productId,
+                marketContext.marketCode()
         );
     }
 
@@ -118,10 +125,18 @@ public class ProductEnrichmentFetcher {
             return future.join();
         } catch (CompletionException exception) {
             Throwable cause = unwrap(exception);
+
             if (cause instanceof ProductNotFoundException productNotFoundException) {
                 throw productNotFoundException;
             }
-            logger.warn("Catalog lookup failed for productId={} market={}: {}", productId, marketCode, cause.getMessage());
+
+            logger.warn(
+                    "Required upstream '{}' failed for productId={} market={}: {}",
+                    "catalog",
+                    productId,
+                    marketCode,
+                    cause.getMessage()
+            );
             throw new CatalogUnavailableException("Catalog service is required but unavailable", cause);
         }
     }
@@ -135,7 +150,9 @@ public class ProductEnrichmentFetcher {
             Supplier<T> supplier,
             T fallback,
             String serviceName,
-            String warningMessage
+            String warningMessage,
+            String productId,
+            String marketCode
     ) {
         return CompletableFuture.supplyAsync(supplier, aggregationExecutor)
                 .orTimeout(timeoutFor(serviceName), TimeUnit.MILLISECONDS)
@@ -145,7 +162,13 @@ public class ProductEnrichmentFetcher {
                     }
 
                     Throwable cause = unwrap(throwable);
-                    logger.info("Optional upstream {} degraded: {}", serviceName, cause.getMessage());
+                    logger.info(
+                            "Optional upstream '{}' degraded for productId={} market={}: {}",
+                            serviceName,
+                            productId,
+                            marketCode,
+                            cause.getMessage()
+                    );
 
                     return OptionalEnrichment.failure(
                             fallback,
